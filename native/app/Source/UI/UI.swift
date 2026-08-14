@@ -127,15 +127,22 @@ class UI: StoreSubscriber {
     if fs.fileExists(atPath: remoteZipPath.path) {
       try! Zip.unzipFile(remoteZipPath, destination: localPath, overwrite: true, password: nil) // Unzip
     } else {
-      if !fs.fileExists(atPath: localZipPath.path) {
+      guard let bundleUIZipPath =
+        Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Embedded")
+        ?? Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Assets/Embedded") else {
+        Console.log("Embedded ui.zip not found")
+        return
+      }
+      if fs.fileExists(atPath: localZipPath.path) {
+        try! fs.removeItem(at: localZipPath)
+      } else {
         Console.log("\(localZipPath.path) doesnt exist")
-        guard let bundleUIZipPath =
-          Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Embedded")
-          ?? Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Assets/Embedded") else {
-          Console.log("Embedded ui.zip not found")
-          return
-        }
-        try! fs.copyItem(at: bundleUIZipPath, to: localZipPath)
+      }
+      do {
+        try fs.copyItem(at: bundleUIZipPath, to: localZipPath)
+      } catch {
+        Console.log("Failed to copy embedded ui.zip: \(error.localizedDescription)")
+        return
       }
       try! Zip.unzipFile(localZipPath, destination: localPath, overwrite: true, password: nil) // Unzip
     }
