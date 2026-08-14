@@ -234,12 +234,25 @@
       '</select>',
       '</label>',
       '<div class="eqm-expert-values">',
-      '<label class="eqm-expert-field"><span>Freq</span><input data-field="frequency" type="number" min="20" max="20000" step="1" value="' + Math.round(band.frequency) + '"></label>',
-      '<label class="eqm-expert-field"><span>Gain</span><input data-field="gain" type="number" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '"></label>',
-      '<label class="eqm-expert-field"><span>Q</span><input data-field="q" type="number" min="0.1" max="24" step="0.01" value="' + Number(band.q).toFixed(2) + '"></label>',
+      '<label class="eqm-expert-field"><span>Freq</span><input data-field="frequency" type="text" inputmode="decimal" title="Frequency Hz" value="' + formatFrequency(band.frequency) + '"></label>',
+      '<label class="eqm-expert-field"><span>Gain</span><input data-field="gain" type="text" inputmode="decimal" title="Gain dB" value="' + formatGain(band.gain) + '"></label>',
+      '<label class="eqm-expert-field"><span>Q</span><input data-field="q" type="text" inputmode="decimal" title="Q" value="' + formatQ(band.q) + '"></label>',
       '</div>',
       '</div>'
     ].join("");
+  }
+
+  function formatFrequency(value) {
+    var frequency = Number(value || 0);
+    return frequency % 1 === 0 ? String(Math.round(frequency)) : frequency.toFixed(1);
+  }
+
+  function formatGain(value) {
+    return Number(value || 0).toFixed(1);
+  }
+
+  function formatQ(value) {
+    return Number(value || 1).toFixed(2);
   }
 
   function option(value, label, selected) {

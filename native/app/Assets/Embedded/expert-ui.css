@@ -64,7 +64,7 @@
 
 .eqm-expert-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
   gap: 5px;
   max-height: 470px;
   overflow: auto;
@@ -73,14 +73,15 @@
 
 .eqm-expert-row {
   display: grid;
-  grid-template-columns: 18px 1fr 22px;
+  grid-template-columns: 18px 28px 46px 58px 52px 52px 22px;
   gap: 4px;
   align-items: center;
   background: #18282f;
   border: 1px solid #253b44;
   border-radius: 4px;
-  padding: 5px;
+  padding: 4px;
   min-width: 0;
+  min-height: 30px;
 }
 
 .eqm-expert-head {
@@ -107,7 +108,7 @@
 
 .eqm-expert-color {
   width: 100%;
-  height: 20px;
+  height: 22px;
 }
 
 .eqm-expert-delete {
@@ -118,31 +119,43 @@
 
 .eqm-expert-field {
   display: grid;
-  gap: 2px;
   min-width: 0;
 }
 
 .eqm-expert-field span {
-  color: #8fa3aa;
-  font-size: 10px;
-  line-height: 1;
+  display: none;
 }
 
 .eqm-expert-type {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .eqm-expert-values {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-column: 1 / -1;
-  gap: 4px;
+  display: contents;
 }
 
 .eqm-expert-values input {
   min-width: 0;
   height: 22px;
   font-size: 11px;
+  text-align: right;
+}
+
+.eqm-expert-row select {
+  min-width: 0;
+  width: 100%;
+  height: 22px;
+  font-size: 11px;
+}
+
+.eqm-expert-row input[type="text"] {
+  min-width: 0;
+  width: 100%;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  font-size: 11px;
+  text-align: right;
 }
 
 .eqm-expert-panel [data-action="add"] {
