@@ -6,6 +6,8 @@
 import Foundation
 import SwiftyUserDefaults
 
+let EXPERT_EQUALIZER_MAXIMUM_BANDS = 100
+
 enum ExpertEqualizerPresetBandFilterType: String, Codable {
   case peak = "PK"
   case lowShelf = "LS"
@@ -44,18 +46,18 @@ struct ExpertEqualizerPresetGroup: Codable, DefaultsSerializable {
   let presets: [ExpertEqualizerPreset]
 }
 
-let EXPERT_EQUALIZER_DEFAULT_BANDS: [ExpertEqualizerPresetBand] = [
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 32, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 64, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 125, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 250, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 500, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 1000, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 2000, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 4000, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 8000, gain: 0, q: 1),
-  ExpertEqualizerPresetBand(enabled: true, filterType: .peak, frequency: 16000, gain: 0, q: 1),
-]
+let EXPERT_EQUALIZER_DEFAULT_BANDS: [ExpertEqualizerPresetBand] = (0..<EXPERT_EQUALIZER_MAXIMUM_BANDS).map { index in
+  let range = Double(EXPERT_EQUALIZER_MAXIMUM_BANDS - 1)
+  let position = Double(index) / range
+  let frequency = 20 * pow(1000, position)
+  return ExpertEqualizerPresetBand(
+    enabled: false,
+    filterType: .peak,
+    frequency: frequency,
+    gain: 0,
+    q: 1
+  )
+}
 
 let EXPERT_EQUALIZER_DEFAULT_PRESETS: [ExpertEqualizerPreset] = [
   ExpertEqualizerPreset(

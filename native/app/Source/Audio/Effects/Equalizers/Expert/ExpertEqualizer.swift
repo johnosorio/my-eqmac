@@ -10,7 +10,7 @@ import SwiftyUserDefaults
 import AVFoundation
 
 class ExpertEqualizer: Equalizer, StoreSubscriber {
-  static let maximumBands = 32
+  static let maximumBands = EXPERT_EQUALIZER_MAXIMUM_BANDS
 
   static var defaultPresets: [ExpertEqualizerPreset] {
     return EXPERT_EQUALIZER_DEFAULT_PRESETS
@@ -39,7 +39,11 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
           bands: EXPERT_EQUALIZER_DEFAULT_BANDS
         ))
       }
-      presets += self.defaultPresets
+      if (Application.store.state.effects.equalizers.expert.showDefaultPresets) {
+        presets += self.defaultPresets
+      } else if let flatPreset = self.defaultPresets.first(where: { $0.id == "flat" }) {
+        presets.append(flatPreset)
+      }
       return presets
     }
   }
@@ -78,6 +82,7 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
   }
 
   static var presetsChanged = Event<[ExpertEqualizerPreset]>()
+  static var selectedPresetChanged = Event<ExpertEqualizerPreset>()
   var selectedPresetChanged = Event<ExpertEqualizerPreset>()
 
   var channels: Int = 2
@@ -90,6 +95,7 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
     didSet {
       apply(preset: selectedPreset, transition: transition)
       selectedPresetChanged.emit(selectedPreset)
+      ExpertEqualizer.selectedPresetChanged.emit(selectedPreset)
     }
   }
 
@@ -101,6 +107,7 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
     Console.log("Creating Expert Equalizer")
 
     super.init(numberOfBands: ExpertEqualizer.maximumBands)
+    resetBands(on: eq)
     eqs = [eq]
 
     if let preset = ExpertEqualizer.getPreset(id: self.state.selectedPresetId) {
@@ -133,6 +140,12 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
       globalGain = preset.global
     }
 
+    for eq in eqs {
+      apply(preset: preset, to: eq)
+    }
+  }
+
+  private func apply(preset: ExpertEqualizerPreset, to eq: AVAudioUnitEQ) {
     for (index, band) in eq.bands.enumerated() {
       if (index < preset.bands.count) {
         apply(presetBand: preset.bands[index], to: band)
@@ -140,6 +153,16 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
         band.bypass = true
         band.gain = 0
       }
+    }
+  }
+
+  private func resetBands(on eq: AVAudioUnitEQ) {
+    eq.globalGain = 0
+    for band in eq.bands {
+      band.bypass = true
+      band.filterType = .parametric
+      band.bandwidth = 1.0
+      band.gain = 0
     }
   }
 

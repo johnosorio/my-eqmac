@@ -29,6 +29,36 @@ class ExpertEqualizerDataBus: DataBus {
       return JSON(preset!.dictionary)
     }
 
+    self.on(.GET, "/settings") { _, _ in
+      return JSON([
+        "showDefaultPresets": self.state.showDefaultPresets
+      ])
+    }
+
+    self.on(.POST, "/settings") { data, _ in
+      let show = data["showDefaultPresets"] as? Bool ?? data["show"] as? Bool
+      if (show == nil) {
+        throw "Invalid 'showDefaultPresets' parameter. Must be a boolean."
+      }
+
+      Application.dispatchAction(ExpertEqualizerAction.setShowDefaultPresets(show!))
+      return "Expert Equalizer Settings have been set"
+    }
+
+    self.on(.GET, "/settings/show-default-presets") { _, _ in
+      return [ "show": self.state.showDefaultPresets ]
+    }
+
+    self.on(.POST, "/settings/show-default-presets") { data, _ in
+      let show = data["show"] as? Bool
+      if (show == nil) {
+        throw "Invalid 'show' parameter. Must be a boolean."
+      }
+
+      Application.dispatchAction(ExpertEqualizerAction.setShowDefaultPresets(show!))
+      return "Expert Equalizer Settings have been set"
+    }
+
     self.on(.POST, "/presets") { data, _ in
       let payload = try self.getPresetPayload(data)
       if let id = data["id"] as? String {
@@ -74,8 +104,62 @@ class ExpertEqualizerDataBus: DataBus {
       return "Expert Equalizer Preset has been deleted."
     }
 
+    self.on(.GET, "/presets/export") { data, res in
+      File.save(extensions: ["json"]) { file in
+        if file != nil {
+          let presets = JSON(ExpertEqualizer.userPresets.map { $0.dictionary })
+          let json = presets.rawString()!
+          do {
+            try json.write(to: file!, atomically: true, encoding: .utf8)
+            res.send(JSON("Exported \(presets.count) Presets"))
+          } catch {
+            res.error("Something went wrong")
+          }
+        } else {
+          res.error("Cancelled")
+        }
+      }
+      return nil
+    }
+
+    self.on(.GET, "/presets/import") { data, res in
+      File.select() { file in
+        if file == nil {
+          res.error("No file selected")
+          return
+        }
+        if file!.pathExtension != "json" {
+          res.error("Invalid File format, must be a JSON")
+          return
+        }
+
+        if let json = try? String(contentsOf: file!) {
+          let presets = JSON(parseJSON: json).arrayValue
+          var imported = 0
+          for preset in presets {
+            if let name = preset["name"].string, let payload = try? self.getPresetPayload(preset) {
+              if preset["id"].string == "manual" {
+                ExpertEqualizer.updatePreset(id: "manual", global: payload.global, bands: payload.bands)
+              } else {
+                _ = ExpertEqualizer.createPreset(name: name, global: payload.global, bands: payload.bands)
+              }
+              imported += 1
+            }
+          }
+          res.send(JSON("Imported \(imported) Presets"))
+        } else {
+          res.error("File is not readable format.")
+        }
+      }
+      return nil
+    }
+
     presetsChangedListener = ExpertEqualizer.presetsChanged.on { presets in
       self.send(to: "/presets", data: JSON(ExpertEqualizer.presets.map { $0.dictionary }))
+    }
+
+    selectedPresetChangedListener = ExpertEqualizer.selectedPresetChanged.on { preset in
+      self.send(to: "/presets/selected", data: JSON(preset.dictionary))
     }
   }
 
@@ -94,12 +178,7 @@ class ExpertEqualizerDataBus: DataBus {
   private func getPresetPayload (_ data: JSON?) throws -> (global: Double, bands: [ExpertEqualizerPresetBand]) {
     if let global = data["global"] as? Double, let bandsData = data["bands"] as? [[String: Any]] {
       let bands = try bandsData.map { try getBand($0) }
-      if bands.isEmpty || bands.count > ExpertEqualizer.maximumBands {
-        throw "Invalid 'bands' parameter, must contain between 1 and \(ExpertEqualizer.maximumBands) bands"
-      }
-      if !(-24.0...24.0).contains(global) {
-        throw "Invalid 'global' parameter, must be between -24.0 and 24.0"
-      }
+      try validate(global: global, bands: bands)
       return (global, bands)
     }
 
@@ -107,6 +186,7 @@ class ExpertEqualizerDataBus: DataBus {
        let global = gains["global"] as? Double,
        let bandsData = gains["bands"] as? [[String: Any]] {
       let bands = try bandsData.map { try getBand($0) }
+      try validate(global: global, bands: bands)
       return (global, bands)
     }
 
@@ -145,5 +225,14 @@ class ExpertEqualizerDataBus: DataBus {
       gain: gain,
       q: q
     )
+  }
+
+  private func validate(global: Double, bands: [ExpertEqualizerPresetBand]) throws {
+    if bands.isEmpty || bands.count > ExpertEqualizer.maximumBands {
+      throw "Invalid 'bands' parameter, must contain between 1 and \(ExpertEqualizer.maximumBands) bands"
+    }
+    if !(-24.0...24.0).contains(global) {
+      throw "Invalid 'global' parameter, must be between -24.0 and 24.0"
+    }
   }
 }
