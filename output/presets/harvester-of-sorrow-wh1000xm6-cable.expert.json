@@ -1,0 +1,88 @@
+[
+  {
+    "name": "Harvester of Sorrow - WH1000XM6 Cable",
+    "global": -4,
+    "bands": [
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 32,
+        "gain": 0.5,
+        "q": 2.871,
+        "color": "#00E0A4"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 64,
+        "gain": 1,
+        "q": 2.871,
+        "color": "#FFB020"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 125,
+        "gain": -1.5,
+        "q": 2.871,
+        "color": "#FFE600"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 250,
+        "gain": -2.5,
+        "q": 2.871,
+        "color": "#A7F432"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 500,
+        "gain": -1,
+        "q": 2.871,
+        "color": "#1DFF42"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 1000,
+        "gain": 0.5,
+        "q": 2.871,
+        "color": "#15E67A"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 2000,
+        "gain": 2,
+        "q": 2.871,
+        "color": "#28D7F0"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 4000,
+        "gain": 3,
+        "q": 2.871,
+        "color": "#3E51FF"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 8000,
+        "gain": 1.5,
+        "q": 2.871,
+        "color": "#6B2CFF"
+      },
+      {
+        "enabled": true,
+        "filterType": "PK",
+        "frequency": 16000,
+        "gain": 0.5,
+        "q": 2.871,
+        "color": "#FF4E6A"
+      }
+    ]
+  }
+]
