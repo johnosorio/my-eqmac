@@ -234,21 +234,28 @@ class ExpertEqualizerDataBus: DataBus {
   private func importPresets(from content: String, fileExtension: String) throws -> Int {
     if fileExtension.lowercased() == "txt" {
       let preset = try parseTextPreset(content)
-      _ = ExpertEqualizer.createPreset(name: preset.name, global: preset.global, bands: preset.bands)
+      let importedPreset = ExpertEqualizer.createPreset(name: preset.name, global: preset.global, bands: preset.bands)
+      Application.dispatchAction(ExpertEqualizerAction.selectPreset(importedPreset.id, true))
       return 1
     }
 
     let presets = JSON(parseJSON: content).arrayValue
     var imported = 0
+    var lastImportedPresetId: String?
     for preset in presets {
       if let name = preset["name"].string, let payload = try? self.getPresetPayload(preset) {
         if preset["id"].string == "manual" {
           ExpertEqualizer.updatePreset(id: "manual", global: payload.global, bands: payload.bands)
+          lastImportedPresetId = "manual"
         } else {
-          _ = ExpertEqualizer.createPreset(name: name, global: payload.global, bands: payload.bands)
+          let importedPreset = ExpertEqualizer.createPreset(name: name, global: payload.global, bands: payload.bands)
+          lastImportedPresetId = importedPreset.id
         }
         imported += 1
       }
+    }
+    if let presetId = lastImportedPresetId {
+      Application.dispatchAction(ExpertEqualizerAction.selectPreset(presetId, true))
     }
     return imported
   }
@@ -257,6 +264,8 @@ class ExpertEqualizerDataBus: DataBus {
     var name: String?
     var global: Double?
     var bands: [ExpertEqualizerPresetBand] = []
+    var channelBands: [String: [ExpertEqualizerPresetBand]] = [:]
+    var currentChannel: String?
 
     for rawLine in content.components(separatedBy: .newlines) {
       let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -274,9 +283,25 @@ class ExpertEqualizerDataBus: DataBus {
         continue
       }
 
+      if line.lowercased().hasPrefix("channel:") {
+        currentChannel = String(line.dropFirst(8)).trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if currentChannel!.isEmpty {
+          throw "Invalid 'Channel' parameter"
+        }
+        if channelBands[currentChannel!] == nil {
+          channelBands[currentChannel!] = []
+        }
+        continue
+      }
+
       if line.lowercased().hasPrefix("filter ") {
-        let band = try parseTextPresetBand(line, index: bands.count)
-        bands.append(band)
+        if let channel = currentChannel {
+          let band = try parseTextPresetBand(line, index: channelBands[channel]?.count ?? 0)
+          channelBands[channel, default: []].append(band)
+        } else {
+          let band = try parseTextPresetBand(line, index: bands.count)
+          bands.append(band)
+        }
       }
     }
 
@@ -287,8 +312,28 @@ class ExpertEqualizerDataBus: DataBus {
       throw "Missing 'Preamp' line"
     }
 
+    if !channelBands.isEmpty {
+      bands = try collapseMirroredChannelBands(channelBands)
+    }
+
     try validate(global: global!, bands: bands)
     return (name!, global!, bands)
+  }
+
+  private func collapseMirroredChannelBands(_ channelBands: [String: [ExpertEqualizerPresetBand]]) throws -> [ExpertEqualizerPresetBand] {
+    let activeChannels = channelBands.filter { !$0.value.isEmpty }
+    if activeChannels.isEmpty {
+      throw "Invalid 'Channel' parameter, no filters were provided"
+    }
+    guard let reference = activeChannels.sorted(by: { $0.key < $1.key }).first?.value else {
+      throw "Invalid 'Channel' parameter"
+    }
+    for (_, bands) in activeChannels {
+      if bands != reference {
+        throw "Independent per-channel curves are not supported yet; Channel sections must match"
+      }
+    }
+    return reference
   }
 
   private func parseTextPresetBand(_ line: String, index: Int) throws -> ExpertEqualizerPresetBand {
