@@ -62,6 +62,10 @@
 		E057A63B22703F590019D13C /* BasicEqualizerDataBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E057A63A22703F590019D13C /* BasicEqualizerDataBus.swift */; };
 		E057A6472270582C0019D13C /* EqualizersDataBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E057A6462270582C0019D13C /* EqualizersDataBus.swift */; };
 		E057A64922710F2B0019D13C /* AdvancedEqualizerDataBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E057A64822710F2B0019D13C /* AdvancedEqualizerDataBus.swift */; };
+		E10000000000000000000001 /* ExpertEqualizerPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000005 /* ExpertEqualizerPreset.swift */; };
+		E10000000000000000000002 /* ExpertEqualizerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000006 /* ExpertEqualizerState.swift */; };
+		E10000000000000000000003 /* ExpertEqualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000007 /* ExpertEqualizer.swift */; };
+		E10000000000000000000004 /* ExpertEqualizerDataBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000008 /* ExpertEqualizerDataBus.swift */; };
 		E057A64D2271A6DD0019D13C /* VolumeDataBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E057A64C2271A6DD0019D13C /* VolumeDataBus.swift */; };
 		E057A6512271A7DC0019D13C /* OutputsDataBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E057A6502271A7DC0019D13C /* OutputsDataBus.swift */; };
 		E06E98D021D17E230041DD9C /* UI.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06E98CF21D17E230041DD9C /* UI.swift */; };
@@ -154,6 +158,10 @@
 		E057A63A22703F590019D13C /* BasicEqualizerDataBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicEqualizerDataBus.swift; sourceTree = "<group>"; };
 		E057A6462270582C0019D13C /* EqualizersDataBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizersDataBus.swift; sourceTree = "<group>"; };
 		E057A64822710F2B0019D13C /* AdvancedEqualizerDataBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedEqualizerDataBus.swift; sourceTree = "<group>"; };
+		E10000000000000000000005 /* ExpertEqualizerPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertEqualizerPreset.swift; sourceTree = "<group>"; };
+		E10000000000000000000006 /* ExpertEqualizerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertEqualizerState.swift; sourceTree = "<group>"; };
+		E10000000000000000000007 /* ExpertEqualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertEqualizer.swift; sourceTree = "<group>"; };
+		E10000000000000000000008 /* ExpertEqualizerDataBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertEqualizerDataBus.swift; sourceTree = "<group>"; };
 		E057A64C2271A6DD0019D13C /* VolumeDataBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeDataBus.swift; sourceTree = "<group>"; };
 		E057A6502271A7DC0019D13C /* OutputsDataBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputsDataBus.swift; sourceTree = "<group>"; };
 		E05901ED2221F21E006B93A5 /* Sandbox.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Sandbox.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
@@ -433,6 +441,17 @@
 			path = Advanced;
 			sourceTree = "<group>";
 		};
+		E10000000000000000000009 /* Expert */ = {
+			isa = PBXGroup;
+			children = (
+				E10000000000000000000005 /* ExpertEqualizerPreset.swift */,
+				E10000000000000000000006 /* ExpertEqualizerState.swift */,
+				E10000000000000000000007 /* ExpertEqualizer.swift */,
+				E10000000000000000000008 /* ExpertEqualizerDataBus.swift */,
+			);
+			path = Expert;
+			sourceTree = "<group>";
+		};
 		E0AD99DA225114C600D893F7 /* Volume */ = {
 			isa = PBXGroup;
 			children = (
@@ -468,6 +487,7 @@
 			children = (
 				E0AD99D22251020400D893F7 /* Basic */,
 				E0AD99D32251021100D893F7 /* Advanced */,
+				E10000000000000000000009 /* Expert */,
 				E044AB7521ED27E4000C41A1 /* Equalizer.swift */,
 				E0E8B62920EEB6A900DE905C /* EqualizersState.swift */,
 				E0E2CFF62104EA7A002DC989 /* Equalizers.swift */,
@@ -797,6 +817,10 @@
 				E0E8B63320EEB6A900DE905C /* BasicEqualizerState.swift in Sources */,
 				E06E98D021D17E230041DD9C /* UI.swift in Sources */,
 				E057A64922710F2B0019D13C /* AdvancedEqualizerDataBus.swift in Sources */,
+				E10000000000000000000001 /* ExpertEqualizerPreset.swift in Sources */,
+				E10000000000000000000002 /* ExpertEqualizerState.swift in Sources */,
+				E10000000000000000000003 /* ExpertEqualizer.swift in Sources */,
+				E10000000000000000000004 /* ExpertEqualizerDataBus.swift in Sources */,
 				E07CB5B121902F4F0033DA89 /* Output.swift in Sources */,
 				7860D7DF2703C20600D1347B /* User.swift in Sources */,
 				E0267AFD218AE39500FB2E5A /* Script.swift in Sources */,

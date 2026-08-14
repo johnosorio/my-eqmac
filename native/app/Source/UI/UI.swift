@@ -112,7 +112,12 @@ class UI: StoreSubscriber {
     } else {
       if !fs.fileExists(atPath: localZipPath.path) {
         Console.log("\(localZipPath.path) doesnt exist")
-        let bundleUIZipPath = Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Embedded")!
+        guard let bundleUIZipPath =
+          Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Embedded")
+          ?? Bundle.main.url(forResource: "ui", withExtension: "zip", subdirectory: "Assets/Embedded") else {
+          Console.log("Embedded ui.zip not found")
+          return
+        }
         try! fs.copyItem(at: bundleUIZipPath, to: localZipPath)
       }
       try! Zip.unzipFile(localZipPath, destination: localPath, overwrite: true, password: nil) // Unzip
@@ -424,7 +429,9 @@ class UI: StoreSubscriber {
       startUILoad(url)
     }
 
-    if (Application.store.state.settings.doOTAUpdates) {
+    if (Application.isAuditUIOnly) {
+      loadLocal()
+    } else if (Application.store.state.settings.doOTAUpdates) {
       remoteIsReachable() { reachable in
         if reachable {
           loadRemote()

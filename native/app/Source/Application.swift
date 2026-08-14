@@ -26,6 +26,12 @@ enum VolumeChangeDirection: String {
 }
 
 class Application {
+  static let disableUpdates = true
+
+  static var isAuditUIOnly: Bool {
+    return ProcessInfo.processInfo.environment["EQMAC_AUDIT_UI_ONLY"] == "1"
+  }
+
   static var bundleId: String {
     return Bundle.main.bundleIdentifier!
   }
@@ -47,17 +53,17 @@ class Application {
   private static var ignoreVolumeEvents = false
 
   static var settings: Settings!
-    
-    
+
+
   static var ui: UI!
-    
-    
+
+
 
   static var dataBus: ApplicationDataBus!
   static let error = EmitterKit.Event<String>()
-  
+
   static var updater = SUUpdater(for: Bundle.main)!
-  
+
   static let store: Store = Store(
     reducer: ApplicationStateReducer,
     state: ApplicationState.load(),
@@ -73,18 +79,25 @@ class Application {
       }
     }
   }
-  
+
   static var equalizersTypeChangedListener: EventListener<EqualizerType>?
 
   static public func start () {
     if (!Constants.DEBUG) {
       setupCrashReporting()
     }
-    
+
     self.settings = Settings()
 
     Networking.startMonitor()
-    
+
+    if isAuditUIOnly {
+      self.setupUI {
+        UI.show()
+      }
+      return
+    }
+
     Driver.check {
       Sources.getInputPermission {
         AudioDevice.register = true
@@ -114,7 +127,7 @@ class Application {
         stopSave {}
       }
     }
-    
+
     equalizersTypeChangedListener = Equalizers.typeChanged.on { _ in
       if (enabled) {
         stopSave {}
@@ -122,10 +135,10 @@ class Application {
           setupAudio()
         }
       }
-      
+
     }
   }
-  
+
   private static func setupCrashReporting () {
     // Create a Sentry client and start crash handler
     SentrySDK.start { options in
@@ -152,9 +165,9 @@ class Application {
       }
     }
   }
-  
+
   static var ignoreNextVolumeEvent = false
-  
+
   static func setupDeviceEvents () {
     AudioDeviceEvents.on(.outputChanged) { device in
       if device.id == Driver.device!.id { return }
@@ -170,11 +183,11 @@ class Application {
         // TODO: Tell the user eqMac doesn't support this device
       }
     }
-    
+
     AudioDeviceEvents.onDeviceListChanged { list in
       if ignoreEvents { return }
       Console.log("listChanged", list)
-      
+
       if list.added.count > 0 {
         for added in list.added {
           if Outputs.shouldAutoSelect(added) {
@@ -183,9 +196,9 @@ class Application {
           }
         }
       } else if (list.removed.count > 0) {
-        
+
         let currentDeviceRemoved = list.removed.contains(where: { $0.id == selectedDevice?.id })
-        
+
         if (currentDeviceRemoved) {
           ignoreEvents = true
           removeEngines()
@@ -196,7 +209,7 @@ class Application {
           }
         }
       }
-      
+
     }
     AudioDeviceEvents.on(.isJackConnectedChanged) { device in
       if ignoreEvents { return }
@@ -218,17 +231,17 @@ class Application {
         }
       }
     }
-    
+
     setupDriverDeviceEvents()
   }
-  
+
   static var ignoreNextDriverMuteEvent = false
   static func setupDriverDeviceEvents () {
     AudioDeviceEvents.on(.volumeChanged, onDevice: Driver.device!) {
       if ignoreEvents || ignoreVolumeEvents {
         return
       }
-      
+
       if ignoreNextVolumeEvent {
         ignoreNextVolumeEvent = false
         return
@@ -245,7 +258,7 @@ class Application {
       }
 
     }
-    
+
     AudioDeviceEvents.on(.muteChanged, onDevice: Driver.device!) {
       if ignoreEvents { return }
       if (ignoreNextDriverMuteEvent) {
@@ -255,7 +268,7 @@ class Application {
       Application.dispatchAction(VolumeAction.setMuted(Driver.device!.mute))
     }
   }
-  
+
   static func selectOutput (device: AudioDevice) {
     ignoreEvents = true
     stopRemoveEngines {
@@ -304,12 +317,12 @@ class Application {
     Application.dispatchAction(VolumeAction.setBalance(balance, false))
     Application.dispatchAction(VolumeAction.setGain(volume, false))
     Application.dispatchAction(VolumeAction.setMuted(muted))
-    
+
     Driver.device!.setVirtualMasterVolume(volume > 1 ? 1 : Float32(volume), direction: .playback)
     Driver.latency = selectedDevice!.latency(direction: .playback) ?? 0 // Set driver latency to mimic device
     Driver.name = "\(selectedDevice!.sourceName ?? selectedDevice!.name) (eqMac)"
     self.matchDriverSampleRateToOutput()
-    
+
     Console.log("Driver new Latency: \(Driver.latency)")
     Console.log("Driver new Sample Rate: \(Driver.device!.actualSampleRate())")
     Console.log("Driver new name: \(Driver.name)")
@@ -327,6 +340,10 @@ class Application {
   }
 
   private static func getLastKnowDeviceFromStack () -> AudioDevice {
+    if Driver.device == nil {
+      return selectedDevice ?? AudioDevice.currentOutputDevice
+    }
+
     var device: AudioDevice?
     if (lastKnownDeviceStack.count > 0) {
       device = lastKnownDeviceStack.removeLast()
@@ -352,7 +369,7 @@ class Application {
     let closestSampleRate = kEQMDeviceSupportedSampleRates.min( by: { abs($0 - outputSampleRate) < abs($1 - outputSampleRate) } )!
     Driver.device!.setNominalSampleRate(closestSampleRate)
   }
-  
+
   private static func createAudioPipeline () {
     engine = nil
     engine = Engine()
@@ -405,7 +422,7 @@ class Application {
     }
     audioPipelineIsRunning.emit()
   }
-  
+
   private static func setupUI (_ completion: @escaping () -> Void) {
     Console.log("Setting up UI")
     ui = UI {
@@ -413,12 +430,12 @@ class Application {
       completion()
     }
   }
-  
+
   private static func setupDataBus () {
     Console.log("Setting up Data Bus")
     dataBus = ApplicationDataBus(bridge: UI.bridge)
   }
-  
+
   static var overrideNextVolumeEvent = false
   static func volumeChangeButtonPressed (direction: VolumeChangeDirection, quarterStep: Bool = false) {
     if ignoreEvents || engine == nil || output == nil {
@@ -435,11 +452,11 @@ class Application {
       if direction == .DOWN {
         overrideNextVolumeEvent = true
       }
-      
+
       let steps = quarterStep ? Constants.QUARTER_VOLUME_STEPS : Constants.FULL_VOLUME_STEPS
-      
+
       var stepIndex: Int
-      
+
       if direction == .UP {
         stepIndex = steps.index(where: { $0 > gain }) ?? steps.count - 1
       } else {
@@ -449,9 +466,9 @@ class Application {
           stepIndex = 0
         }
       }
-      
+
       var newGain = steps[stepIndex]
-      
+
       if (newGain <= 1) {
         Async.delay(100) {
           Driver.device!.setVirtualMasterVolume(Float(newGain), direction: .playback)
@@ -464,12 +481,16 @@ class Application {
       Application.dispatchAction(VolumeAction.setGain(newGain, false))
     }
   }
-  
+
   static func muteButtonPressed () {
     ignoreNextDriverMuteEvent = false
   }
-  
+
   private static func switchBackToLastKnownDevice () {
+    if Driver.device == nil {
+      return
+    }
+
     // If the active equalizer global gain hass been lowered we need to equalize the volume to avoid blowing people ears out
     let device = getLastKnowDeviceFromStack()
 
@@ -489,6 +510,10 @@ class Application {
       case .advanced:
         if let preset = AdvancedEqualizer.getPreset(id: equalizersState.advanced.selectedPresetId) {
           return preset.gains.global
+        }
+      case .expert:
+        if let preset = ExpertEqualizer.getPreset(id: equalizersState.expert.selectedPresetId) {
+          return preset.global
         }
       }
       return 0
@@ -590,12 +615,21 @@ class Application {
       checkLastKnownDeviceActive()
     }
   }
-  
+
   static func quit () {
     NSApp.terminate(nil)
   }
-  
+
   static func handleTermination (_ completion: (() -> Void)? = nil) {
+    if isAuditUIOnly || Driver.device == nil {
+      Storage.synchronize()
+      stopListeners()
+      if completion != nil {
+        completion!()
+      }
+      return
+    }
+
     stopSave {
       Driver.hidden = true
       if completion != nil {
@@ -603,7 +637,7 @@ class Application {
       }
     }
   }
-  
+
   static func restart () {
     let url = URL(fileURLWithPath: Bundle.main.resourcePath!)
     let path = url.deletingLastPathComponent().deletingLastPathComponent().absoluteString
@@ -613,50 +647,54 @@ class Application {
     task.launch()
     quit()
   }
-  
+
   static func restartMac () {
     Script.apple("restart_mac")
   }
-  
+
   static func checkForUpdates () {
+    if disableUpdates {
+      Console.log("Update checks are disabled in this build")
+      return
+    }
     updater.checkForUpdates(nil)
   }
-  
+
   static func uninstall () {
     // TODO: Implement uninstaller
     Console.log("// TODO: Download Uninstaller")
   }
-  
+
   static func stopListeners () {
     AudioDeviceEvents.stop()
     selectedDeviceIsAliveListener?.isListening = false
     selectedDeviceIsAliveListener = nil
-    
+
     audioPipelineIsRunningListener?.isListening = false
     audioPipelineIsRunningListener = nil
-    
+
     selectedDeviceVolumeChangedListener?.isListening = false
     selectedDeviceVolumeChangedListener = nil
-    
+
     selectedDeviceSampleRateChangedListener?.isListening = false
     selectedDeviceSampleRateChangedListener = nil
   }
-  
+
   static var version: String {
     return Bundle.main.infoDictionary!["CFBundleVersion"] as! String
   }
-  
+
   static func newState (_ state: ApplicationState) {
     if state.enabled != enabled {
       enabled = state.enabled
     }
   }
-  
+
   static var supportPath: URL {
     //Create App directory if not exists:
     let fileManager = FileManager()
     let urlPaths = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-    
+
     let appDirectory = urlPaths.first!.appendingPathComponent(Bundle.main.bundleIdentifier! ,isDirectory: true)
     var objCTrue: ObjCBool = true
     let path = appDirectory.path
@@ -665,7 +703,7 @@ class Application {
     }
     return appDirectory
   }
-  
+
   static private let dispatchActionQueue = DispatchQueue(label: "dispatchActionQueue", qos: .userInitiated)
   // Custom dispatch function. Need to execute some dispatches on the main thread
   static func dispatchAction(_ action: Action, onMainThread: Bool = true) {
@@ -680,4 +718,3 @@ class Application {
     }
   }
 }
-

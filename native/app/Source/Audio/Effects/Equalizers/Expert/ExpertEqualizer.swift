@@ -1,0 +1,189 @@
+//
+//  ExpertEqualizer.swift
+//  eqMac
+//
+
+import Foundation
+import ReSwift
+import EmitterKit
+import SwiftyUserDefaults
+import AVFoundation
+
+class ExpertEqualizer: Equalizer, StoreSubscriber {
+  static let maximumBands = 32
+
+  static var defaultPresets: [ExpertEqualizerPreset] {
+    return EXPERT_EQUALIZER_DEFAULT_PRESETS
+  }
+
+  static var userPresets: [ExpertEqualizerPreset] {
+    get {
+      return Storage[.expertEqualizerPresets] ?? []
+    }
+    set (newPresets) {
+      Storage[.expertEqualizerPresets] = newPresets
+      presetsChanged.emit(presets)
+    }
+  }
+
+  static var presets: [ExpertEqualizerPreset] {
+    get {
+      var presets: [ExpertEqualizerPreset] = self.userPresets
+      let hasManual = presets.contains { $0.id == "manual" }
+      if (!hasManual) {
+        presets.append(ExpertEqualizerPreset(
+          id: "manual",
+          name: "Manual",
+          isDefault: true,
+          global: 0,
+          bands: EXPERT_EQUALIZER_DEFAULT_BANDS
+        ))
+      }
+      presets += self.defaultPresets
+      return presets
+    }
+  }
+
+  static func getPreset (id: String) -> ExpertEqualizerPreset? {
+    return self.presets.first(where: { $0.id == id })
+  }
+
+  static func createPreset (name: String, global: Double, bands: [ExpertEqualizerPresetBand]) -> ExpertEqualizerPreset {
+    let preset = ExpertEqualizerPreset(
+      id: UUID().uuidString,
+      name: name,
+      isDefault: false,
+      global: global,
+      bands: bands
+    )
+    self.userPresets.append(preset)
+    presetsChanged.emit(presets)
+    return preset
+  }
+
+  static func updatePreset (id: String, global: Double, bands: [ExpertEqualizerPresetBand]) {
+    var presets = self.userPresets
+    if var preset = self.getPreset(id: id) {
+      preset = ExpertEqualizerPreset(id: id, name: preset.name, isDefault: false, global: global, bands: bands)
+      presets.removeAll(where: { $0.id == preset.id })
+      presets.append(preset)
+      self.userPresets = presets
+      presetsChanged.emit(presets)
+    }
+  }
+
+  static func deletePreset (_ preset: ExpertEqualizerPreset) {
+    self.userPresets.removeAll(where: { $0.id == preset.id })
+    presetsChanged.emit(presets)
+  }
+
+  static var presetsChanged = Event<[ExpertEqualizerPreset]>()
+  var selectedPresetChanged = Event<ExpertEqualizerPreset>()
+
+  var channels: Int = 2
+  var splitter: AVAudioNode?
+  var eqs: [AVAudioUnitEQ] = []
+  var mixer: AVAudioNode?
+  var transition = false
+
+  var selectedPreset: ExpertEqualizerPreset = ExpertEqualizer.getPreset(id: "flat")! {
+    didSet {
+      apply(preset: selectedPreset, transition: transition)
+      selectedPresetChanged.emit(selectedPreset)
+    }
+  }
+
+  var state: ExpertEqualizerState {
+    return Application.store.state.effects.equalizers.expert
+  }
+
+  init () {
+    Console.log("Creating Expert Equalizer")
+
+    super.init(numberOfBands: ExpertEqualizer.maximumBands)
+    eqs = [eq]
+
+    if let preset = ExpertEqualizer.getPreset(id: self.state.selectedPresetId) {
+      ({ self.selectedPreset = preset })()
+    }
+    setupStateListener()
+  }
+
+  func setupStateListener () {
+    Application.store.subscribe(self) { subscription in
+      subscription.select { state in state.effects.equalizers.expert }
+    }
+  }
+
+  func newState(state: ExpertEqualizerState) {
+    if let preset = ExpertEqualizer.getPreset(id: state.selectedPresetId) {
+      if (selectedPreset.id != state.selectedPresetId || !sameBands(selectedPreset, preset)) {
+        transition = state.transition
+        selectedPreset = preset
+      }
+    }
+  }
+
+  private func apply(preset: ExpertEqualizerPreset, transition: Bool) {
+    if (transition) {
+      Transition.perform(from: globalGain, to: preset.global) { gainStep in
+        self.globalGain = gainStep
+      }
+    } else {
+      globalGain = preset.global
+    }
+
+    for (index, band) in eq.bands.enumerated() {
+      if (index < preset.bands.count) {
+        apply(presetBand: preset.bands[index], to: band)
+      } else {
+        band.bypass = true
+        band.gain = 0
+      }
+    }
+  }
+
+  private func apply(presetBand: ExpertEqualizerPresetBand, to band: AVAudioUnitEQFilterParameters) {
+    band.filterType = avFilterType(for: presetBand.filterType)
+    band.frequency = Float(clamp(presetBand.frequency, min: 20, max: 20000))
+    band.gain = Float(clamp(presetBand.gain, min: -24, max: 24))
+    band.bandwidth = Float(bandwidthOctaves(forQ: presetBand.q))
+    band.bypass = !presetBand.enabled
+  }
+
+  private func avFilterType(for type: ExpertEqualizerPresetBandFilterType) -> AVAudioUnitEQFilterType {
+    switch type {
+    case .peak:
+      return .parametric
+    case .lowShelf:
+      return .lowShelf
+    case .highShelf:
+      return .highShelf
+    case .lowPass:
+      return .lowPass
+    case .highPass:
+      return .highPass
+    }
+  }
+
+  private func bandwidthOctaves(forQ q: Double) -> Double {
+    let q = clamp(q, min: 0.1, max: 24)
+    let q2 = q * q
+    let value = (2 * q2 + 1 + sqrt(pow(2 * q2 + 1, 2) - 1)) / (2 * q2)
+    return clamp(log2(value), min: 0.05, max: 5)
+  }
+
+  private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
+    return Swift.max(minValue, Swift.min(maxValue, value))
+  }
+
+  private func sameBands(_ lhs: ExpertEqualizerPreset, _ rhs: ExpertEqualizerPreset) -> Bool {
+    return lhs.global == rhs.global && lhs.bands == rhs.bands
+  }
+
+  typealias StoreSubscriberStateType = ExpertEqualizerState
+
+  deinit {
+    Application.store.unsubscribe(self)
+  }
+}

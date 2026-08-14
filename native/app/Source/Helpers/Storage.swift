@@ -13,19 +13,22 @@ import AVFoundation
 
 extension DefaultsKeys {
   static let state = DefaultsKey<ApplicationState?>("state")
-  
+
   static let isFirstLaunch = DefaultsKey<Bool?>("isFirstLaunch")
   // Device
   static let lastKnownOutputDeviceId = DefaultsKey<Int?>("lastKnownOutputDeviceId")
   static let lastKnownInputDeviceId = DefaultsKey<Int?>("lastKnownInputDeviceId")
-  
+
   // Effects
   // Effects - Equalizer
   // Effects - Equalizer - Basic
   static let basicEqualizerPresets = DefaultsKey<[BasicEqualizerPreset]?>("basicEqualizerPresets")
-  
+
   // Effects - Equalizer - Advanced
   static let advancedEqualizerPresets = DefaultsKey<[AdvancedEqualizerPreset]?>("advancedEqualizerPresets")
+
+  // Effects - Equalizer - Expert
+  static let expertEqualizerPresets = DefaultsKey<[ExpertEqualizerPreset]?>("expertEqualizerPresets")
 }
 
 let Storage = Defaults

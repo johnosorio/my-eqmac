@@ -25,11 +25,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, SUUpdaterDelegate {
       window.close()
     }
 
-    Application.updater.delegate = self
-    Application.updater.feedURL = Settings.updatesFeedUrl
+    if !Application.disableUpdates {
+      Application.updater.delegate = self
+      Application.updater.feedURL = Settings.updatesFeedUrl
+    }
     
     updateProcessed.once { _ in
       Application.start()
+    }
+
+    if (Application.disableUpdates || Application.isAuditUIOnly) {
+      self.updateProcessed.emit()
+      return
     }
 
     if (Application.store.state.settings.doAutoCheckUpdates) {
@@ -130,5 +137,3 @@ class AppDelegate: NSObject, NSApplicationDelegate, SUUpdaterDelegate {
     Application.handleWakeUp()
   }
 }
-
-

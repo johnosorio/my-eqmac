@@ -1,0 +1,29 @@
+.DS_Store
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+project.xcworkspace/
+xcuserdata/
+Pods/
+build/
+docsets/
+docs
+Carthage/Build
+
+# Minimal vendored copy for eqMac.
+.swiftformat
+.clang-format
+.jazzy.yaml
+.swiftpm/
+AMCoreAudio Demo/
+AMCoreAudio.xcodeproj/
+AMCoreAudio.xcworkspace/
+CHANGELOG.md
+Package.swift
+Tests/
+bin/
+images/

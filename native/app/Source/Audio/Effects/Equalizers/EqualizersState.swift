@@ -16,6 +16,7 @@ class EqualizersState: State {
   var previousType: EqualizerType?
   var basic = BasicEqualizerState()
   var advanced = AdvancedEqualizerState()
+  var expert = ExpertEqualizerState()
 }
 
 enum EqualizersAction: Action {
@@ -39,6 +40,7 @@ func EqualizersStateReducer(action: Action, state: EqualizersState?) -> Equalize
   
   state.basic = BasicEqualizerStateReducer(action: action, state: state.basic)
   state.advanced = AdvancedEqualizerStateReducer(action: action, state: state.advanced)
+  state.expert = ExpertEqualizerStateReducer(action: action, state: state.expert)
   
   return state
 }
