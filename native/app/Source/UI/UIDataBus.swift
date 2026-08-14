@@ -42,7 +42,8 @@ class UIDataBus: DataBus {
       guard let height = data["height"] as? Double, height > 0 else {
         throw "Please provide a valid 'height' parameter."
       }
-      Application.dispatchAction(UIAction.setHeight(height, true))
+      let expertHeight = Application.store.state.effects.equalizers.type == .expert && height < 700 ? 760 : height
+      Application.dispatchAction(UIAction.setHeight(expertHeight, true))
       return "UI Height has been set"
     }
 
