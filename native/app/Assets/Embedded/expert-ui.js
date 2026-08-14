@@ -221,7 +221,7 @@
   function renderBand(band, index) {
     return [
       '<div class="eqm-expert-row" data-index="' + index + '">',
-      '<label class="eqm-expert-enabled"><input data-field="enabled" type="checkbox" ' + (band.enabled ? "checked" : "") + '>On</label>',
+      '<label class="eqm-expert-enabled" title="Enabled"><input data-field="enabled" type="checkbox" ' + (band.enabled ? "checked" : "") + '><span>On</span></label>',
       '<input class="eqm-expert-color" data-field="color" type="color" value="' + escapeHtml(band.color || bandColor(index)) + '">',
       '<button class="eqm-expert-delete" data-action="delete">-</button>',
       '<label class="eqm-expert-field eqm-expert-type"><span>Type</span>',
@@ -233,10 +233,11 @@
       option("HP", "HP", band.filterType),
       '</select>',
       '</label>',
+      '<div class="eqm-expert-values">',
       '<label class="eqm-expert-field"><span>Freq</span><input data-field="frequency" type="number" min="20" max="20000" step="1" value="' + Math.round(band.frequency) + '"></label>',
       '<label class="eqm-expert-field"><span>Gain</span><input data-field="gain" type="number" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '"></label>',
       '<label class="eqm-expert-field"><span>Q</span><input data-field="q" type="number" min="0.1" max="24" step="0.01" value="' + Number(band.q).toFixed(2) + '"></label>',
-      '<input class="eqm-expert-gain-range" type="range" data-field="gainRange" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '">',
+      '</div>',
       '</div>'
     ].join("");
   }
@@ -248,9 +249,6 @@
   function onBandInput(event) {
     var row = event.currentTarget;
     var index = parseInt(row.dataset.index, 10);
-    if (event.target.dataset.field === "gainRange") {
-      row.querySelector('[data-field="gain"]').value = event.target.value;
-    }
     var band = readBand(row);
     state.preset.bands[index] = band;
     drawChart(state.panel.querySelector("canvas"));
