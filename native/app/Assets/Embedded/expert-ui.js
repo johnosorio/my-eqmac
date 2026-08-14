@@ -2,13 +2,16 @@
   "use strict";
 
   var EXPERT_ROUTE = "/effects/equalizers/expert";
+  var EXPERT_WIDTH = 1060;
+  var EXPERT_HEIGHT = 820;
   var state = {
     type: null,
     preset: null,
     presets: [],
     response: null,
     saveTimer: null,
-    panel: null
+    panel: null,
+    layoutMode: null
   };
 
   function getBridge() {
@@ -157,6 +160,7 @@
     var isExpert = state.type === "Expert";
     panel.dataset.active = isExpert ? "true" : "false";
     if (!isExpert || !state.preset) return;
+    applyExpertLayout();
 
     var presetSelect = panel.querySelector('[data-field="preset"]');
     presetSelect.innerHTML = state.presets.map(function (preset) {
@@ -173,6 +177,33 @@
       row.querySelector('[data-action="delete"]').addEventListener("click", onDeleteBand);
     });
     drawChart(panel.querySelector("canvas"));
+  }
+
+  function applyExpertLayout() {
+    if (state.layoutMode === "expert") return;
+    state.layoutMode = "expert";
+    Promise.all([
+      call("POST", "/ui/min-height", { minHeight: 420 }),
+      call("POST", "/ui/max-height", { maxHeight: EXPERT_HEIGHT }),
+      call("POST", "/ui/min-width", { minWidth: 430 }),
+      call("POST", "/ui/max-width", { maxWidth: EXPERT_WIDTH })
+    ]).then(function () {
+      call("POST", "/ui/height", { height: EXPERT_HEIGHT }).catch(function () {});
+      call("POST", "/ui/width", { width: EXPERT_WIDTH }).catch(function () {});
+    }).catch(function () {});
+  }
+
+  function leaveExpertLayout() {
+    if (state.layoutMode !== "expert") return;
+    state.layoutMode = null;
+    Promise.all([
+      call("POST", "/ui/min-height", { minHeight: 180 }),
+      call("POST", "/ui/max-height", { maxHeight: 820 }),
+      call("POST", "/ui/min-width", { minWidth: 430 }),
+      call("POST", "/ui/max-width", { maxWidth: 1060 })
+    ]).then(function () {
+      call("POST", "/ui/height", { height: 400 }).catch(function () {});
+    }).catch(function () {});
   }
 
   function renderBand(band, index) {
@@ -321,10 +352,10 @@
         if (nextType !== state.type) {
           state.type = nextType;
           if (state.type === "Expert") {
-            call("POST", "/ui/height", { height: 820 }).catch(function () {});
-            call("POST", "/ui/width", { width: 1060 }).catch(function () {});
+            applyExpertLayout();
             refreshExpert();
           } else {
+            leaveExpertLayout();
             render();
           }
         }
