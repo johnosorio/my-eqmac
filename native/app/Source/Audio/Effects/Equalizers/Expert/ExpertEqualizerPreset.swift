@@ -7,6 +7,18 @@ import Foundation
 import SwiftyUserDefaults
 
 let EXPERT_EQUALIZER_MAXIMUM_BANDS = 100
+let EXPERT_EQUALIZER_BAND_COLORS = [
+  "#00E0A4",
+  "#FFB020",
+  "#FFE600",
+  "#A7F432",
+  "#1DFF42",
+  "#15E67A",
+  "#28D7F0",
+  "#3E51FF",
+  "#6B2CFF",
+  "#FF4E6A",
+]
 
 enum ExpertEqualizerPresetBandFilterType: String, Codable {
   case peak = "PK"
@@ -22,13 +34,50 @@ struct ExpertEqualizerPresetBand: Codable, DefaultsSerializable, Equatable {
   let frequency: Double
   let gain: Double
   let q: Double
+  let color: String
+
+  init(
+    enabled: Bool,
+    filterType: ExpertEqualizerPresetBandFilterType,
+    frequency: Double,
+    gain: Double,
+    q: Double,
+    color: String = EXPERT_EQUALIZER_BAND_COLORS[0]
+  ) {
+    self.enabled = enabled
+    self.filterType = filterType
+    self.frequency = frequency
+    self.gain = gain
+    self.q = q
+    self.color = color
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case enabled
+    case filterType
+    case frequency
+    case gain
+    case q
+    case color
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    enabled = try container.decode(Bool.self, forKey: .enabled)
+    filterType = try container.decode(ExpertEqualizerPresetBandFilterType.self, forKey: .filterType)
+    frequency = try container.decode(Double.self, forKey: .frequency)
+    gain = try container.decode(Double.self, forKey: .gain)
+    q = try container.decode(Double.self, forKey: .q)
+    color = try container.decodeIfPresent(String.self, forKey: .color) ?? EXPERT_EQUALIZER_BAND_COLORS[0]
+  }
 
   static func == (lhs: ExpertEqualizerPresetBand, rhs: ExpertEqualizerPresetBand) -> Bool {
     return lhs.enabled == rhs.enabled &&
       lhs.filterType == rhs.filterType &&
       lhs.frequency == rhs.frequency &&
       lhs.gain == rhs.gain &&
-      lhs.q == rhs.q
+      lhs.q == rhs.q &&
+      lhs.color == rhs.color
   }
 }
 
@@ -55,7 +104,8 @@ let EXPERT_EQUALIZER_DEFAULT_BANDS: [ExpertEqualizerPresetBand] = (0..<EXPERT_EQ
     filterType: .peak,
     frequency: frequency,
     gain: 0,
-    q: 1
+    q: 1,
+    color: EXPERT_EQUALIZER_BAND_COLORS[index % EXPERT_EQUALIZER_BAND_COLORS.count]
   )
 }
 

@@ -29,6 +29,22 @@ class ExpertEqualizerDataBus: DataBus {
       return JSON(preset!.dictionary)
     }
 
+    self.on(.GET, "/presets/groups") { _, _ in
+      let groups = [
+        ExpertEqualizerPresetGroup(
+          id: "user",
+          name: "User",
+          presets: ExpertEqualizer.userPresets
+        ),
+        ExpertEqualizerPresetGroup(
+          id: "default",
+          name: "Default",
+          presets: ExpertEqualizer.defaultPresets
+        )
+      ]
+      return JSON(groups.map { $0.dictionary })
+    }
+
     self.on(.GET, "/settings") { _, _ in
       return JSON([
         "showDefaultPresets": self.state.showDefaultPresets
@@ -102,6 +118,53 @@ class ExpertEqualizerDataBus: DataBus {
       ExpertEqualizer.deletePreset(preset)
       Application.dispatchAction(ExpertEqualizerAction.selectPreset("flat", true))
       return "Expert Equalizer Preset has been deleted."
+    }
+
+    self.on(.GET, "/bands") { _, _ in
+      return JSON(ExpertEqualizer.getSelectedPreset().bands.map { $0.dictionary })
+    }
+
+    self.on(.POST, "/bands") { data, _ in
+      let preset = ExpertEqualizer.getSelectedPreset()
+      if preset.bands.count >= ExpertEqualizer.maximumBands {
+        throw "Cannot add more than \(ExpertEqualizer.maximumBands) Expert Equalizer bands"
+      }
+      let band = try self.getBand(data)
+      return JSON(ExpertEqualizer.addBandToSelectedPreset(band).dictionary)
+    }
+
+    self.on(.POST, "/bands/update") { data, _ in
+      let index = try self.getBandIndex(data)
+      let band = try self.getBandValue(data["band"])
+      return JSON(ExpertEqualizer.updateBandInSelectedPreset(index: index, band: band).dictionary)
+    }
+
+    self.on(.DELETE, "/bands") { data, _ in
+      let index = try self.getBandIndex(data)
+      let preset = ExpertEqualizer.getSelectedPreset()
+      if preset.bands.count <= 1 {
+        throw "Cannot remove the last Expert Equalizer band"
+      }
+      return JSON(ExpertEqualizer.deleteBandFromSelectedPreset(index: index).dictionary)
+    }
+
+    self.on(.POST, "/global") { data, _ in
+      let global = data["global"] as? Double
+      if (global == nil) {
+        throw "Invalid 'global' parameter, must be a Double"
+      }
+      if !(-24.0...24.0).contains(global!) {
+        throw "Invalid 'global' parameter, must be between -24.0 and 24.0"
+      }
+      return JSON(ExpertEqualizer.setSelectedGlobalGain(global!).dictionary)
+    }
+
+    self.on(.POST, "/auto-gain") { _, _ in
+      return JSON(ExpertEqualizer.autoGainSelectedPreset().dictionary)
+    }
+
+    self.on(.GET, "/response") { _, _ in
+      return JSON(self.getResponse(preset: ExpertEqualizer.getSelectedPreset()))
     }
 
     self.on(.GET, "/presets/export") { data, res in
@@ -203,6 +266,7 @@ class ExpertEqualizerDataBus: DataBus {
 
     let enabled = data["enabled"] as? Bool ?? true
     let q = data["q"] as? Double ?? 1
+    let color = data["color"] as? String ?? EXPERT_EQUALIZER_BAND_COLORS[0]
     let typeValue = data["filterType"] as? String ?? data["type"] as? String ?? ExpertEqualizerPresetBandFilterType.peak.rawValue
 
     guard let filterType = ExpertEqualizerPresetBandFilterType(rawValue: typeValue) else {
@@ -217,14 +281,54 @@ class ExpertEqualizerDataBus: DataBus {
     if !(0.1...24.0).contains(q) {
       throw "Invalid 'q' parameter, must be between 0.1 and 24.0"
     }
+    if !isValidColor(color) {
+      throw "Invalid 'color' parameter, must be a hex color"
+    }
 
     return ExpertEqualizerPresetBand(
       enabled: enabled,
       filterType: filterType,
       frequency: frequency,
       gain: gain,
-      q: q
+      q: q,
+      color: color
     )
+  }
+
+  private func getBand (_ data: JSON?) throws -> ExpertEqualizerPresetBand {
+    if let bandData = data?.dictionaryObject {
+      return try getBand(bandData)
+    }
+    throw "Invalid 'band' parameter, must be an ExpertEqualizerPresetBand"
+  }
+
+  private func getBandValue (_ data: Any?) throws -> ExpertEqualizerPresetBand {
+    if let bandData = data as? [String: Any] {
+      return try getBand(bandData)
+    }
+    if let bandJson = data as? JSON {
+      return try getBand(bandJson)
+    }
+    throw "Invalid 'band' parameter, must be an ExpertEqualizerPresetBand"
+  }
+
+  private func getBandIndex (_ data: JSON?) throws -> Int {
+    let index = data["index"] as? Int
+    if (index == nil) {
+      throw "Invalid 'index' parameter, must be an Int"
+    }
+    let preset = ExpertEqualizer.getSelectedPreset()
+    if !(0..<preset.bands.count).contains(index!) {
+      throw "Invalid 'index' parameter, must reference an existing Expert Equalizer band"
+    }
+    return index!
+  }
+
+  private func isValidColor(_ color: String) -> Bool {
+    return color.range(
+      of: "^#[0-9A-Fa-f]{6}$",
+      options: .regularExpression
+    ) != nil
   }
 
   private func validate(global: Double, bands: [ExpertEqualizerPresetBand]) throws {
@@ -234,5 +338,56 @@ class ExpertEqualizerDataBus: DataBus {
     if !(-24.0...24.0).contains(global) {
       throw "Invalid 'global' parameter, must be between -24.0 and 24.0"
     }
+  }
+
+  private func getResponse(preset: ExpertEqualizerPreset) -> [String: Any] {
+    let points = (0..<240).map { index -> [String: Any] in
+      let frequency = 20 * pow(1000, Double(index) / 239)
+      let bandResponses = preset.bands.map { band -> Double in
+        return responseGain(frequency: frequency, band: band)
+      }
+      let total = bandResponses.reduce(preset.global, +)
+      return [
+        "frequency": frequency,
+        "gain": clamp(total, min: -36, max: 36),
+        "bands": bandResponses.map { clamp($0, min: -36, max: 36) }
+      ]
+    }
+    return [
+      "global": preset.global,
+      "points": points
+    ]
+  }
+
+  private func responseGain(frequency: Double, band: ExpertEqualizerPresetBand) -> Double {
+    if !band.enabled {
+      return 0
+    }
+    let ratio = max(frequency, 20) / max(band.frequency, 20)
+    let distance = log2(ratio)
+    let width = max(0.05, bandwidthOctaves(forQ: band.q))
+    switch band.filterType {
+    case .peak:
+      return band.gain / (1 + pow(distance / width, 2))
+    case .lowShelf:
+      return band.gain / (1 + pow(2, distance / width))
+    case .highShelf:
+      return band.gain / (1 + pow(2, -distance / width))
+    case .lowPass:
+      return -24 * max(0, distance / width)
+    case .highPass:
+      return -24 * max(0, -distance / width)
+    }
+  }
+
+  private func bandwidthOctaves(forQ q: Double) -> Double {
+    let q = clamp(q, min: 0.1, max: 24)
+    let q2 = q * q
+    let value = (2 * q2 + 1 + sqrt(pow(2 * q2 + 1, 2) - 1)) / (2 * q2)
+    return clamp(log2(value), min: 0.05, max: 5)
+  }
+
+  private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
+    return Swift.max(minValue, Swift.min(maxValue, value))
   }
 }

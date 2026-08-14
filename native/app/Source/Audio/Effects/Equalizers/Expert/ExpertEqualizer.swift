@@ -76,6 +76,68 @@ class ExpertEqualizer: Equalizer, StoreSubscriber {
     }
   }
 
+  static func setSelectedPreset(global: Double, bands: [ExpertEqualizerPresetBand], transition: Bool = false) -> ExpertEqualizerPreset {
+    let selectedId = Application.store.state.effects.equalizers.expert.selectedPresetId
+    if let selectedPreset = self.getPreset(id: selectedId), !selectedPreset.isDefault {
+      self.updatePreset(id: selectedPreset.id, global: global, bands: bands)
+      Application.dispatchAction(ExpertEqualizerAction.selectPreset(selectedPreset.id, transition))
+      return self.getPreset(id: selectedPreset.id)!
+    }
+
+    let existingManual = self.getPreset(id: "manual")
+    let preset = ExpertEqualizerPreset(
+      id: "manual",
+      name: existingManual?.name ?? "Manual",
+      isDefault: false,
+      global: global,
+      bands: bands
+    )
+    var presets = self.userPresets
+    presets.removeAll(where: { $0.id == preset.id })
+    presets.append(preset)
+    self.userPresets = presets
+    Application.dispatchAction(ExpertEqualizerAction.selectPreset(preset.id, transition))
+    return preset
+  }
+
+  static func addBandToSelectedPreset(_ band: ExpertEqualizerPresetBand) -> ExpertEqualizerPreset {
+    let preset = self.getSelectedPreset()
+    var bands = preset.bands
+    bands.append(band)
+    return setSelectedPreset(global: preset.global, bands: bands, transition: true)
+  }
+
+  static func updateBandInSelectedPreset(index: Int, band: ExpertEqualizerPresetBand) -> ExpertEqualizerPreset {
+    let preset = self.getSelectedPreset()
+    var bands = preset.bands
+    bands[index] = band
+    return setSelectedPreset(global: preset.global, bands: bands, transition: false)
+  }
+
+  static func deleteBandFromSelectedPreset(index: Int) -> ExpertEqualizerPreset {
+    let preset = self.getSelectedPreset()
+    var bands = preset.bands
+    bands.remove(at: index)
+    return setSelectedPreset(global: preset.global, bands: bands, transition: true)
+  }
+
+  static func setSelectedGlobalGain(_ global: Double) -> ExpertEqualizerPreset {
+    let preset = self.getSelectedPreset()
+    return setSelectedPreset(global: global, bands: preset.bands, transition: true)
+  }
+
+  static func autoGainSelectedPreset() -> ExpertEqualizerPreset {
+    let preset = self.getSelectedPreset()
+    let maxGain = preset.bands.filter { $0.enabled }.map { $0.gain }.max() ?? 0
+    let global = -Swift.max(0, maxGain)
+    return setSelectedPreset(global: global, bands: preset.bands, transition: true)
+  }
+
+  static func getSelectedPreset() -> ExpertEqualizerPreset {
+    let selectedId = Application.store.state.effects.equalizers.expert.selectedPresetId
+    return self.getPreset(id: selectedId) ?? self.getPreset(id: "flat")!
+  }
+
   static func deletePreset (_ preset: ExpertEqualizerPreset) {
     self.userPresets.removeAll(where: { $0.id == preset.id })
     presetsChanged.emit(presets)

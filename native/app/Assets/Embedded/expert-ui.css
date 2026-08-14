@@ -1,0 +1,86 @@
+.eqm-expert-panel {
+  display: none;
+  width: calc(100% - 20px);
+  margin: 10px;
+  color: #c9cdd0;
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.eqm-expert-panel[data-active="true"] {
+  display: block;
+}
+
+.eqm-expert-toolbar,
+.eqm-expert-row {
+  display: grid;
+  grid-template-columns: 22px 44px 82px 82px 76px 64px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+}
+
+.eqm-expert-toolbar {
+  grid-template-columns: 28px 1fr 92px 110px 88px 92px 92px;
+  margin-bottom: 8px;
+}
+
+.eqm-expert-panel button,
+.eqm-expert-panel select,
+.eqm-expert-panel input {
+  background: #111c22;
+  border: 1px solid #2f434c;
+  border-radius: 4px;
+  color: #e8eef0;
+  min-height: 24px;
+}
+
+.eqm-expert-panel button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.eqm-expert-panel input[type="number"] {
+  box-sizing: border-box;
+  padding: 2px 5px;
+  width: 100%;
+}
+
+.eqm-expert-panel input[type="color"] {
+  border: 0;
+  padding: 0;
+}
+
+.eqm-expert-chart {
+  width: 100%;
+  height: 210px;
+  background: #142228;
+  border: 1px solid #2f434c;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.eqm-expert-list {
+  display: grid;
+  gap: 4px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.eqm-expert-row {
+  background: #18282f;
+  border: 1px solid #253b44;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.eqm-expert-head {
+  color: #8fa3aa;
+  font-size: 11px;
+  padding: 0 5px 3px;
+}
+
+.eqm-expert-status {
+  color: #8fa3aa;
+  min-height: 18px;
+  margin-top: 6px;
+}
