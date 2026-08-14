@@ -159,6 +159,7 @@
     var panel = ensurePanel();
     if (!panel) return;
     var isExpert = state.type === "Expert";
+    setExpertActive(isExpert);
     panel.dataset.active = isExpert ? "true" : "false";
     if (!isExpert || !state.preset) return;
     applyExpertLayout();
@@ -178,6 +179,13 @@
       row.querySelector('[data-action="delete"]').addEventListener("click", onDeleteBand);
     });
     drawChart(panel.querySelector("canvas"));
+  }
+
+  function setExpertActive(isExpert) {
+    document.documentElement.classList.toggle("eqm-expert-active", isExpert);
+    if (document.body) {
+      document.body.classList.toggle("eqm-expert-active", isExpert);
+    }
   }
 
   function applyExpertLayout() {
@@ -213,8 +221,10 @@
   function renderBand(band, index) {
     return [
       '<div class="eqm-expert-row" data-index="' + index + '">',
-      '<input data-field="enabled" type="checkbox" ' + (band.enabled ? "checked" : "") + '>',
-      '<input data-field="color" type="color" value="' + escapeHtml(band.color || bandColor(index)) + '">',
+      '<label class="eqm-expert-enabled"><input data-field="enabled" type="checkbox" ' + (band.enabled ? "checked" : "") + '>On</label>',
+      '<input class="eqm-expert-color" data-field="color" type="color" value="' + escapeHtml(band.color || bandColor(index)) + '">',
+      '<button class="eqm-expert-delete" data-action="delete">-</button>',
+      '<label class="eqm-expert-field eqm-expert-type"><span>Type</span>',
       '<select data-field="filterType">',
       option("PK", "PK", band.filterType),
       option("LS", "LS", band.filterType),
@@ -222,11 +232,11 @@
       option("LP", "LP", band.filterType),
       option("HP", "HP", band.filterType),
       '</select>',
-      '<input data-field="frequency" type="number" min="20" max="20000" step="1" value="' + Math.round(band.frequency) + '">',
-      '<input data-field="gain" type="number" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '">',
-      '<input data-field="q" type="number" min="0.1" max="24" step="0.01" value="' + Number(band.q).toFixed(2) + '">',
-      '<input type="range" data-field="gainRange" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '">',
-      '<button data-action="delete">-</button>',
+      '</label>',
+      '<label class="eqm-expert-field"><span>Freq</span><input data-field="frequency" type="number" min="20" max="20000" step="1" value="' + Math.round(band.frequency) + '"></label>',
+      '<label class="eqm-expert-field"><span>Gain</span><input data-field="gain" type="number" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '"></label>',
+      '<label class="eqm-expert-field"><span>Q</span><input data-field="q" type="number" min="0.1" max="24" step="0.01" value="' + Number(band.q).toFixed(2) + '"></label>',
+      '<input class="eqm-expert-gain-range" type="range" data-field="gainRange" min="-24" max="24" step="0.1" value="' + Number(band.gain).toFixed(1) + '">',
       '</div>'
     ].join("");
   }

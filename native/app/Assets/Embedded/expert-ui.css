@@ -10,8 +10,12 @@
   display: block;
 }
 
+.eqm-expert-active eqm-outputs {
+  display: none !important;
+}
+
 .eqm-expert-toolbar,
-.eqm-expert-row {
+.eqm-expert-head {
   display: grid;
   grid-template-columns: 22px 44px 82px 82px 76px 64px 1fr 28px;
   gap: 8px;
@@ -19,7 +23,7 @@
 }
 
 .eqm-expert-toolbar {
-  grid-template-columns: 28px 1fr 92px 110px 88px 92px 92px;
+  grid-template-columns: 28px minmax(170px, 1fr) 92px 110px 88px 92px 92px;
   margin-bottom: 6px;
 }
 
@@ -60,23 +64,73 @@
 
 .eqm-expert-list {
   display: grid;
-  gap: 3px;
-  max-height: 290px;
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 6px;
+  max-height: 360px;
   overflow: auto;
-  padding-right: 4px;
+  padding: 0 4px 4px 0;
 }
 
 .eqm-expert-row {
+  display: grid;
+  grid-template-columns: 1fr 34px 28px;
+  gap: 6px;
+  align-items: center;
   background: #18282f;
   border: 1px solid #253b44;
   border-radius: 4px;
-  padding: 3px 5px;
+  padding: 6px;
+  min-width: 0;
 }
 
 .eqm-expert-head {
+  display: none;
   color: #8fa3aa;
   font-size: 11px;
   padding: 0 5px 2px;
+}
+
+.eqm-expert-enabled {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.eqm-expert-color {
+  width: 34px;
+  height: 22px;
+}
+
+.eqm-expert-delete {
+  width: 28px;
+}
+
+.eqm-expert-field {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eqm-expert-field span {
+  color: #8fa3aa;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.eqm-expert-type,
+.eqm-expert-gain-range {
+  grid-column: 1 / -1;
+}
+
+.eqm-expert-gain-range {
+  width: 100%;
+  margin: 2px 0 0;
+}
+
+.eqm-expert-panel [data-action="add"] {
+  position: sticky;
+  bottom: 0;
 }
 
 .eqm-expert-status {
