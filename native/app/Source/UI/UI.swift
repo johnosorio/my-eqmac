@@ -29,20 +29,38 @@ extension UIMode {
 }
 
 class UI: StoreSubscriber {
+  static let expertWidth: Double = 1060
+  static let expertHeight: Double = 760
+
   static var state: UIState {
     return Application.store.state.ui
   }
 
+  static var isExpertEqualizerActive: Bool {
+    return Application.store.state.effects.equalizers.type == .expert
+  }
+
   static var minHeight: Double {
-    return state.minHeight * scale
+    var minHeight = state.minHeight
+    if isExpertEqualizerActive {
+      minHeight = Swift.max(minHeight, expertHeight)
+    }
+    return minHeight * scale
   }
   
   static var minWidth: Double {
-    return state.minWidth * scale
+    var minWidth = state.minWidth
+    if isExpertEqualizerActive {
+      minWidth = Swift.max(minWidth, expertWidth)
+    }
+    return minWidth * scale
   }
   
   static var maxHeight: Double {
     var maxHeight = (state.maxHeight ?? 4000) * scale
+    if isExpertEqualizerActive {
+      maxHeight = Swift.max(maxHeight, expertHeight * scale)
+    }
     if (maxHeight < minHeight) {
       maxHeight = minHeight
     }
@@ -51,6 +69,9 @@ class UI: StoreSubscriber {
   
   static var maxWidth: Double {
     var maxWidth = (state.maxWidth ?? 4000) * scale
+    if isExpertEqualizerActive {
+      maxWidth = Swift.max(maxWidth, expertWidth * scale)
+    }
     if (maxWidth < minWidth) {
       maxWidth = minWidth
     }
@@ -357,6 +378,14 @@ class UI: StoreSubscriber {
   }
 
   private static func checkFixWindowSize () {
+    if (isExpertEqualizerActive && UI.height < expertHeight * scale) {
+      UI.height = expertHeight * scale
+    }
+
+    if (isExpertEqualizerActive && UI.width < expertWidth * scale) {
+      UI.width = expertWidth * scale
+    }
+
     if (UI.height < Double(UI.minSize.height)) {
       UI.height = Double(UI.minSize.height)
     }
