@@ -87,14 +87,10 @@ class UI: StoreSubscriber {
   }
 
   static var maxSize: NSSize {
-    if isResizable {
-      return NSSize(
-        width: maxWidth,
-        height: maxHeight
-      )
-    } else {
-      return minSize
-    }
+    return NSSize(
+      width: maxWidth,
+      height: maxHeight
+    )
   }
 
   static var isResizable: Bool {
