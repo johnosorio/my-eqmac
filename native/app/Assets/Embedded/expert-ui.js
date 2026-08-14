@@ -3,7 +3,7 @@
 
   var EXPERT_ROUTE = "/effects/equalizers/expert";
   var EXPERT_WIDTH = 1060;
-  var EXPERT_HEIGHT = 820;
+  var EXPERT_HEIGHT = 760;
   var state = {
     type: null,
     preset: null,
@@ -11,7 +11,8 @@
     response: null,
     saveTimer: null,
     panel: null,
-    layoutMode: null
+    layoutMode: null,
+    layoutTimer: null
   };
 
   function getBridge() {
@@ -83,7 +84,7 @@
       '<button data-action="export">Export</button>',
       '<button data-action="import">Import</button>',
       '</div>',
-      '<canvas class="eqm-expert-chart" width="900" height="210"></canvas>',
+      '<canvas class="eqm-expert-chart" width="900" height="180"></canvas>',
       '<div class="eqm-expert-row eqm-expert-head">',
       '<span>On</span><span>Color</span><span>Type</span><span>Freq</span><span>Gain</span><span>Q</span><span></span><span></span>',
       '</div>',
@@ -180,23 +181,26 @@
   }
 
   function applyExpertLayout() {
-    if (state.layoutMode === "expert") return;
     state.layoutMode = "expert";
-    Promise.all([
-      call("POST", "/ui/min-height", { minHeight: 420 }),
-      call("POST", "/ui/max-height", { maxHeight: EXPERT_HEIGHT }),
-      call("POST", "/ui/min-width", { minWidth: 430 }),
-      call("POST", "/ui/max-width", { maxWidth: EXPERT_WIDTH })
-    ]).then(function () {
-      call("POST", "/ui/height", { height: EXPERT_HEIGHT }).catch(function () {});
-      call("POST", "/ui/width", { width: EXPERT_WIDTH }).catch(function () {});
-    }).catch(function () {});
+    clearTimeout(state.layoutTimer);
+    state.layoutTimer = setTimeout(function () {
+      call("POST", "/ui/resizable", { resizable: true }).catch(function () {});
+      call("POST", "/ui/min-height", { minHeight: 420 }).catch(function () {});
+      call("POST", "/ui/max-height", { maxHeight: EXPERT_HEIGHT }).catch(function () {});
+      call("POST", "/ui/min-width", { minWidth: 430 }).catch(function () {});
+      call("POST", "/ui/max-width", { maxWidth: EXPERT_WIDTH }).catch(function () {});
+      setTimeout(function () {
+        call("POST", "/ui/width", { width: EXPERT_WIDTH }).catch(function () {});
+        call("POST", "/ui/height", { height: EXPERT_HEIGHT }).catch(function () {});
+      }, 80);
+    }, 0);
   }
 
   function leaveExpertLayout() {
     if (state.layoutMode !== "expert") return;
     state.layoutMode = null;
     Promise.all([
+      call("POST", "/ui/resizable", { resizable: false }),
       call("POST", "/ui/min-height", { minHeight: 180 }),
       call("POST", "/ui/max-height", { maxHeight: 820 }),
       call("POST", "/ui/min-width", { minWidth: 430 }),

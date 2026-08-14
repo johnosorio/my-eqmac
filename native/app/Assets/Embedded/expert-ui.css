@@ -1,7 +1,7 @@
 .eqm-expert-panel {
   display: none;
   width: calc(100% - 20px);
-  margin: 10px;
+  margin: 8px 10px;
   color: #c9cdd0;
   font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -20,7 +20,7 @@
 
 .eqm-expert-toolbar {
   grid-template-columns: 28px 1fr 92px 110px 88px 92px 92px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .eqm-expert-panel button,
@@ -30,7 +30,7 @@
   border: 1px solid #2f434c;
   border-radius: 4px;
   color: #e8eef0;
-  min-height: 24px;
+  min-height: 22px;
 }
 
 .eqm-expert-panel button {
@@ -51,17 +51,17 @@
 
 .eqm-expert-chart {
   width: 100%;
-  height: 210px;
+  height: 180px;
   background: #142228;
   border: 1px solid #2f434c;
   border-radius: 4px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .eqm-expert-list {
   display: grid;
-  gap: 4px;
-  max-height: 360px;
+  gap: 3px;
+  max-height: 290px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -70,17 +70,17 @@
   background: #18282f;
   border: 1px solid #253b44;
   border-radius: 4px;
-  padding: 5px;
+  padding: 3px 5px;
 }
 
 .eqm-expert-head {
   color: #8fa3aa;
   font-size: 11px;
-  padding: 0 5px 3px;
+  padding: 0 5px 2px;
 }
 
 .eqm-expert-status {
   color: #8fa3aa;
-  min-height: 18px;
-  margin-top: 6px;
+  min-height: 14px;
+  margin-top: 4px;
 }
