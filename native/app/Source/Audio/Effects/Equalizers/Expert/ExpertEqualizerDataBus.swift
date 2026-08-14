@@ -191,25 +191,18 @@ class ExpertEqualizerDataBus: DataBus {
           res.error("No file selected")
           return
         }
-        if file!.pathExtension != "json" {
-          res.error("Invalid File format, must be a JSON")
+        if !["json", "txt"].contains(file!.pathExtension.lowercased()) {
+          res.error("Invalid File format, must be a JSON or TXT")
           return
         }
 
-        if let json = try? String(contentsOf: file!) {
-          let presets = JSON(parseJSON: json).arrayValue
-          var imported = 0
-          for preset in presets {
-            if let name = preset["name"].string, let payload = try? self.getPresetPayload(preset) {
-              if preset["id"].string == "manual" {
-                ExpertEqualizer.updatePreset(id: "manual", global: payload.global, bands: payload.bands)
-              } else {
-                _ = ExpertEqualizer.createPreset(name: name, global: payload.global, bands: payload.bands)
-              }
-              imported += 1
-            }
+        if let content = try? String(contentsOf: file!) {
+          do {
+            let imported = try self.importPresets(from: content, fileExtension: file!.pathExtension)
+            res.send(JSON("Imported \(imported) Presets"))
+          } catch {
+            res.error("\(error)")
           }
-          res.send(JSON("Imported \(imported) Presets"))
         } else {
           res.error("File is not readable format.")
         }
@@ -236,6 +229,115 @@ class ExpertEqualizerDataBus: DataBus {
     } else {
       throw "Please provide a preset ID"
     }
+  }
+
+  private func importPresets(from content: String, fileExtension: String) throws -> Int {
+    if fileExtension.lowercased() == "txt" {
+      let preset = try parseTextPreset(content)
+      _ = ExpertEqualizer.createPreset(name: preset.name, global: preset.global, bands: preset.bands)
+      return 1
+    }
+
+    let presets = JSON(parseJSON: content).arrayValue
+    var imported = 0
+    for preset in presets {
+      if let name = preset["name"].string, let payload = try? self.getPresetPayload(preset) {
+        if preset["id"].string == "manual" {
+          ExpertEqualizer.updatePreset(id: "manual", global: payload.global, bands: payload.bands)
+        } else {
+          _ = ExpertEqualizer.createPreset(name: name, global: payload.global, bands: payload.bands)
+        }
+        imported += 1
+      }
+    }
+    return imported
+  }
+
+  private func parseTextPreset(_ content: String) throws -> (name: String, global: Double, bands: [ExpertEqualizerPresetBand]) {
+    var name: String?
+    var global: Double?
+    var bands: [ExpertEqualizerPresetBand] = []
+
+    for rawLine in content.components(separatedBy: .newlines) {
+      let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+      if line.isEmpty {
+        continue
+      }
+
+      if line.lowercased().hasPrefix("name:") {
+        name = String(line.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+        continue
+      }
+
+      if line.lowercased().hasPrefix("preamp:") {
+        global = try readRequiredDouble(line, pattern: #"(?i)^preamp:\s*([-+]?\d+(?:[.,]\d+)?)\s*dB"#, description: "Preamp")
+        continue
+      }
+
+      if line.lowercased().hasPrefix("filter ") {
+        let band = try parseTextPresetBand(line, index: bands.count)
+        bands.append(band)
+      }
+    }
+
+    if name == nil || name!.isEmpty {
+      throw "Missing 'Name' line"
+    }
+    if global == nil {
+      throw "Missing 'Preamp' line"
+    }
+
+    try validate(global: global!, bands: bands)
+    return (name!, global!, bands)
+  }
+
+  private func parseTextPresetBand(_ line: String, index: Int) throws -> ExpertEqualizerPresetBand {
+    let enabledValue = try readRequiredString(
+      line,
+      pattern: #"(?i)^filter\s+\d+:\s*(ON|OFF)\s+"#,
+      description: "Filter enabled"
+    )
+    let typeValue = try readRequiredString(
+      line,
+      pattern: #"(?i)^filter\s+\d+:\s*(?:ON|OFF)\s+([A-Z]{2})\s+"#,
+      description: "Filter type"
+    ).uppercased()
+    let frequency = try readRequiredDouble(
+      line,
+      pattern: #"(?i)\bFc\s+([-+]?\d+(?:[.,]\d+)?)\s*Hz\b"#,
+      description: "Fc"
+    )
+    let gain = try readRequiredDouble(
+      line,
+      pattern: #"(?i)\bGain\s+([-+]?\d+(?:[.,]\d+)?)\s*dB\b"#,
+      description: "Gain"
+    )
+    let q = readDouble(
+      line,
+      pattern: #"(?i)\bQ\s+([-+]?\d+(?:[.,]\d+)?)\b"#
+    ) ?? 1
+
+    guard let filterType = ExpertEqualizerPresetBandFilterType(rawValue: typeValue) else {
+      throw "Invalid 'filterType' parameter"
+    }
+    if !(20.0...20000.0).contains(frequency) {
+      throw "Invalid 'frequency' parameter, must be between 20.0 and 20000.0"
+    }
+    if !(-24.0...24.0).contains(gain) {
+      throw "Invalid 'gain' parameter, must be between -24.0 and 24.0"
+    }
+    if !(0.1...24.0).contains(q) {
+      throw "Invalid 'q' parameter, must be between 0.1 and 24.0"
+    }
+
+    return ExpertEqualizerPresetBand(
+      enabled: enabledValue.uppercased() == "ON",
+      filterType: filterType,
+      frequency: frequency,
+      gain: gain,
+      q: q,
+      color: EXPERT_EQUALIZER_BAND_COLORS[index % EXPERT_EQUALIZER_BAND_COLORS.count]
+    )
   }
 
   private func getPresetPayload (_ data: JSON?) throws -> (global: Double, bands: [ExpertEqualizerPresetBand]) {
@@ -322,6 +424,41 @@ class ExpertEqualizerDataBus: DataBus {
       throw "Invalid 'index' parameter, must reference an existing Expert Equalizer band"
     }
     return index!
+  }
+
+  private func readRequiredString(_ text: String, pattern: String, description: String) throws -> String {
+    if let value = readString(text, pattern: pattern) {
+      return value
+    }
+    throw "Invalid '\(description)' parameter"
+  }
+
+  private func readRequiredDouble(_ text: String, pattern: String, description: String) throws -> Double {
+    if let value = readDouble(text, pattern: pattern) {
+      return value
+    }
+    throw "Invalid '\(description)' parameter"
+  }
+
+  private func readDouble(_ text: String, pattern: String) -> Double? {
+    if let value = readString(text, pattern: pattern) {
+      return Double(value.replacingOccurrences(of: ",", with: "."))
+    }
+    return nil
+  }
+
+  private func readString(_ text: String, pattern: String) -> String? {
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+      return nil
+    }
+    let range = NSRange(text.startIndex..<text.endIndex, in: text)
+    guard let match = regex.firstMatch(in: text, options: [], range: range), match.numberOfRanges > 1 else {
+      return nil
+    }
+    guard let valueRange = Range(match.range(at: 1), in: text) else {
+      return nil
+    }
+    return String(text[valueRange])
   }
 
   private func isValidColor(_ color: String) -> Bool {
