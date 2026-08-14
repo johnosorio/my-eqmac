@@ -124,6 +124,8 @@ class Output {
       Application.output!.resetOffsets()
       return noErr
     }
+
+    ExpertEqualizer.processChannelPreset(ioData: ioData!, frameCount: inNumberFrames)
     
     return noErr
   }

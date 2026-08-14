@@ -87,6 +87,23 @@ struct ExpertEqualizerPreset: Codable, DefaultsSerializable {
   let isDefault: Bool
   let global: Double
   let bands: [ExpertEqualizerPresetBand]
+  let channels: [String: [ExpertEqualizerPresetBand]]?
+
+  init(
+    id: String,
+    name: String,
+    isDefault: Bool,
+    global: Double,
+    bands: [ExpertEqualizerPresetBand],
+    channels: [String: [ExpertEqualizerPresetBand]]? = nil
+  ) {
+    self.id = id
+    self.name = name
+    self.isDefault = isDefault
+    self.global = global
+    self.bands = bands
+    self.channels = channels
+  }
 }
 
 struct ExpertEqualizerPresetGroup: Codable, DefaultsSerializable {

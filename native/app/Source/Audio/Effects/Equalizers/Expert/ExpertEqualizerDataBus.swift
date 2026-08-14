@@ -81,7 +81,7 @@ class ExpertEqualizerDataBus: DataBus {
         if (ExpertEqualizer.defaultPresets.contains { $0.id == id }) {
           throw "Default Presets aren't updatable."
         }
-        ExpertEqualizer.updatePreset(id: id, global: payload.global, bands: payload.bands)
+        ExpertEqualizer.updatePreset(id: id, global: payload.global, bands: payload.bands, channels: payload.channels)
         let select = data["select"] as? Bool
         if select == true {
           let transition = data["transition"] as? Bool
@@ -93,7 +93,12 @@ class ExpertEqualizerDataBus: DataBus {
         if (name == nil) {
           throw "Invalid 'name' parameter, must be a String"
         }
-        let preset = ExpertEqualizer.createPreset(name: name!, global: payload.global, bands: payload.bands)
+        let preset = ExpertEqualizer.createPreset(
+          name: name!,
+          global: payload.global,
+          bands: payload.bands,
+          channels: payload.channels
+        )
         let select = data["select"] as? Bool
         if select == true {
           let transition = data["transition"] as? Bool
@@ -234,7 +239,12 @@ class ExpertEqualizerDataBus: DataBus {
   private func importPresets(from content: String, fileExtension: String) throws -> Int {
     if fileExtension.lowercased() == "txt" {
       let preset = try parseTextPreset(content)
-      let importedPreset = ExpertEqualizer.createPreset(name: preset.name, global: preset.global, bands: preset.bands)
+      let importedPreset = ExpertEqualizer.createPreset(
+        name: preset.name,
+        global: preset.global,
+        bands: preset.bands,
+        channels: preset.channels
+      )
       Application.dispatchAction(ExpertEqualizerAction.selectPreset(importedPreset.id, true))
       return 1
     }
@@ -245,10 +255,15 @@ class ExpertEqualizerDataBus: DataBus {
     for preset in presets {
       if let name = preset["name"].string, let payload = try? self.getPresetPayload(preset) {
         if preset["id"].string == "manual" {
-          ExpertEqualizer.updatePreset(id: "manual", global: payload.global, bands: payload.bands)
+          ExpertEqualizer.updatePreset(id: "manual", global: payload.global, bands: payload.bands, channels: payload.channels)
           lastImportedPresetId = "manual"
         } else {
-          let importedPreset = ExpertEqualizer.createPreset(name: name, global: payload.global, bands: payload.bands)
+          let importedPreset = ExpertEqualizer.createPreset(
+            name: name,
+            global: payload.global,
+            bands: payload.bands,
+            channels: payload.channels
+          )
           lastImportedPresetId = importedPreset.id
         }
         imported += 1
@@ -260,7 +275,9 @@ class ExpertEqualizerDataBus: DataBus {
     return imported
   }
 
-  private func parseTextPreset(_ content: String) throws -> (name: String, global: Double, bands: [ExpertEqualizerPresetBand]) {
+  private func parseTextPreset(
+    _ content: String
+  ) throws -> (name: String, global: Double, bands: [ExpertEqualizerPresetBand], channels: [String: [ExpertEqualizerPresetBand]]?) {
     var name: String?
     var global: Double?
     var bands: [ExpertEqualizerPresetBand] = []
@@ -313,27 +330,24 @@ class ExpertEqualizerDataBus: DataBus {
     }
 
     if !channelBands.isEmpty {
-      bands = try collapseMirroredChannelBands(channelBands)
+      let activeChannels = try validateChannelBands(channelBands)
+      bands = activeChannels["L"] ?? activeChannels["LEFT"] ?? activeChannels.sorted(by: { $0.key < $1.key }).first!.value
+      return (name!, global!, bands, activeChannels)
     }
 
     try validate(global: global!, bands: bands)
-    return (name!, global!, bands)
+    return (name!, global!, bands, nil)
   }
 
-  private func collapseMirroredChannelBands(_ channelBands: [String: [ExpertEqualizerPresetBand]]) throws -> [ExpertEqualizerPresetBand] {
+  private func validateChannelBands(_ channelBands: [String: [ExpertEqualizerPresetBand]]) throws -> [String: [ExpertEqualizerPresetBand]] {
     let activeChannels = channelBands.filter { !$0.value.isEmpty }
     if activeChannels.isEmpty {
       throw "Invalid 'Channel' parameter, no filters were provided"
     }
-    guard let reference = activeChannels.sorted(by: { $0.key < $1.key }).first?.value else {
-      throw "Invalid 'Channel' parameter"
-    }
     for (_, bands) in activeChannels {
-      if bands != reference {
-        throw "Independent per-channel curves are not supported yet; Channel sections must match"
-      }
+      try validate(global: 0, bands: bands)
     }
-    return reference
+    return activeChannels
   }
 
   private func parseTextPresetBand(_ line: String, index: Int) throws -> ExpertEqualizerPresetBand {
@@ -385,22 +399,40 @@ class ExpertEqualizerDataBus: DataBus {
     )
   }
 
-  private func getPresetPayload (_ data: JSON?) throws -> (global: Double, bands: [ExpertEqualizerPresetBand]) {
+  private func getPresetPayload (
+    _ data: JSON?
+  ) throws -> (global: Double, bands: [ExpertEqualizerPresetBand], channels: [String: [ExpertEqualizerPresetBand]]?) {
     if let global = data["global"] as? Double, let bandsData = data["bands"] as? [[String: Any]] {
       let bands = try bandsData.map { try getBand($0) }
+      let channels = try getChannels(data)
       try validate(global: global, bands: bands)
-      return (global, bands)
+      return (global, bands, channels)
     }
 
     if let gains = data["gains"] as? [String: Any],
        let global = gains["global"] as? Double,
        let bandsData = gains["bands"] as? [[String: Any]] {
       let bands = try bandsData.map { try getBand($0) }
+      let channels = try getChannels(data)
       try validate(global: global, bands: bands)
-      return (global, bands)
+      return (global, bands, channels)
     }
 
     throw "Invalid 'bands' parameter, must be an array of ExpertEqualizerPresetBand"
+  }
+
+  private func getChannels(_ data: JSON?) throws -> [String: [ExpertEqualizerPresetBand]]? {
+    guard let channelsData = data["channels"] as? [String: Any] else {
+      return nil
+    }
+    var channels: [String: [ExpertEqualizerPresetBand]] = [:]
+    for (key, value) in channelsData {
+      guard let bandsData = value as? [[String: Any]] else {
+        throw "Invalid 'channels' parameter, channel values must be arrays of ExpertEqualizerPresetBand"
+      }
+      channels[key.uppercased()] = try bandsData.map { try getBand($0) }
+    }
+    return try validateChannelBands(channels)
   }
 
   private func getBand (_ data: [String: Any]) throws -> ExpertEqualizerPresetBand {
